@@ -45,6 +45,9 @@ module hwpe_stream_sink
   logic address_gen_clr;
   logic done;
 
+  logic [15:0] overall_cnt, next_overall_cnt;
+  logic done_n, done_q;
+
   logic clk_realign_gated;
   logic [NB_TCDM_PORTS-1:0] tcdm_inflight;
   logic tcdm_inflight_any;
@@ -213,7 +216,7 @@ module hwpe_stream_sink
           ns = STREAM_WORKING;
           address_gen_en  = 1'b0;
         end
-        else if(~flags_o.addressgen_flags.in_progress) begin
+        else if(~flags_o.addressgen_flags.in_progress & done_n ) begin
           ns = STREAM_IDLE;
           done = 1'b1;
           address_gen_en  = 1'b0;
@@ -229,6 +232,39 @@ module hwpe_stream_sink
         address_gen_en = 1'b0;
       end
     endcase
+  end
+
+  /// only works with one tcdm port
+  always_comb
+  begin
+    next_overall_cnt = overall_cnt;
+    done_n = done_q;
+    if(cs == STREAM_IDLE) begin
+      next_overall_cnt = '0;
+      done_n = '0;
+    end else if(tcdm[0].req & tcdm[0].gnt) begin
+      next_overall_cnt = overall_cnt + 1;
+    end
+    if((tcdm[0].req & tcdm[0].gnt) && overall_cnt == ctrl_i.addressgen_ctrl.trans_size-1) begin
+      next_overall_cnt = '0;
+      done_n = 1'b1;
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni)
+  begin
+    if(~rst_ni) begin
+      overall_cnt <= '0;
+      done_q <= '0;
+    end
+    else if(clear_i) begin
+      overall_cnt <= '0;
+      done_q <= '0;
+    end
+    else begin
+      overall_cnt <= next_overall_cnt;
+      done_q <= done_n;
+    end
   end
 
 endmodule // hwpe_stream_sink

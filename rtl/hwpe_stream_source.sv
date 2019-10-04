@@ -40,6 +40,7 @@ module hwpe_stream_source
   state_sourcesink_t cs, ns;
 
   logic done;
+  logic done_n, done_q;
   logic address_gen_en;
   logic address_gen_clr;
 
@@ -308,6 +309,12 @@ module hwpe_stream_source
                 ns = STREAM_DONE;
               end
             end
+            // To make up for the fact that a streamer with a len of 1 never
+            // enters above STREAM_DONE condition. Maybe better to add | len == 0 
+            // in above condition. But this suffices and works and is much cleaner. 
+            else if (done_n) begin
+              ns = STREAM_DONE;
+            end
             else begin
               ns = STREAM_WORKING;
             end
@@ -331,28 +338,34 @@ module hwpe_stream_source
       always_comb
       begin
         next_overall_cnt = overall_cnt;
-        if(cs == STREAM_IDLE)
+        done_n = done_q;
+        if(cs == STREAM_IDLE) begin
           next_overall_cnt = '0;
-        else if(stream.valid & stream.ready) begin
+          done_n = '0;
+        end else if(stream.valid & stream.ready) begin
           next_overall_cnt = overall_cnt + 1;
         end
         if((stream.valid & stream.ready) && overall_cnt == ctrl_i.addressgen_ctrl.trans_size-1) begin
           next_overall_cnt = '0;
+          done_n = 1'b1;
         end
       end
 
-      always_ff @(posedge clk_i or negedge rst_ni)
-      begin
-        if(~rst_ni) begin
-          overall_cnt <= '0;
-        end
-        else if(clear_i) begin
-          overall_cnt <= '0;
-        end
-        else begin
-          overall_cnt <= next_overall_cnt;
-        end
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+      if(~rst_ni) begin
+        overall_cnt <= '0;
+        done_q <= '0;
       end
+      else if(clear_i) begin
+        overall_cnt <= '0;
+        done_q <= '0;
+      end
+      else begin
+        overall_cnt <= next_overall_cnt;
+        done_q <= done_n;
+      end
+    end
 
     end
     else begin : no_decoupled_ctrl_gen
