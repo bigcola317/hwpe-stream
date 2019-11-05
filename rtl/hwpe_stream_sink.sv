@@ -185,6 +185,8 @@ module hwpe_stream_sink
     end
   end
 
+  assign flags_o.state = cs;
+
   always_comb
   begin : fsm_comb
     done      = 1'b0;

@@ -266,6 +266,8 @@ module hwpe_stream_source
       flags_o.done <= done;
   end
 
+  assign flags_o.state = cs;
+
   generate
 
     if(DECOUPLED) begin : decoupled_ctrl_gen      

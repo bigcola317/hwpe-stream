@@ -60,15 +60,18 @@ package hwpe_stream_package;
     ctrl_addressgen_t addressgen_ctrl;
   } ctrl_sourcesink_t;
 
+  typedef enum {
+    STREAM_IDLE, STREAM_WORKING, STREAM_DONE
+  } state_sourcesink_t;
+
   typedef struct packed {
     logic              ready_start;
+    state_sourcesink_t state;
     logic              done;
     flags_addressgen_t addressgen_flags;
     logic              ready_fifo;
   } flags_sourcesink_t;
 
-  typedef enum {
-    STREAM_IDLE, STREAM_WORKING, STREAM_DONE
-  } state_sourcesink_t;
+
 
 endpackage
